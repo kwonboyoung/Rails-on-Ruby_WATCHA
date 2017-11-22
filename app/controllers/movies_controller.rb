@@ -1,13 +1,14 @@
 class MoviesController < ApplicationController
   before_action :set_movie, only: [:show, :edit, :update, :destroy]
-  before_action :authenticate_user!, except: [:index, :show]
-
+  # before_action :check_admin, only: [:edit, :update, :destroy]
+  load_and_authorize_resource
   # GET /movies
   # GET /movies.json
   def index
     # @movies=Movie.all
     # :id => :desc 를 줄여서 id: :desc
     @movies = Movie.order(id: :desc).page params[:page]
+    # authorize! :read, Movie
   end
 
   # GET /movies/1
@@ -22,16 +23,18 @@ class MoviesController < ApplicationController
     # else
     #   @avg =@sum.to_f/@movie.reviews.size
     # end
-   
+   # authorize! :read, Movie
   end
 
   # GET /movies/new
   def new
     @movie = Movie.new
+    # authorize! :create, Movie
   end
 
   # GET /movies/1/edit
   def edit
+   # authorize! :update, Movie
   end
 
   # POST /movies
@@ -48,6 +51,7 @@ class MoviesController < ApplicationController
         format.json { render json: @movie.errors, status: :unprocessable_entity }
       end
     end
+    # authorize! :create, Movie
   end
 
   # PATCH/PUT /movies/1
@@ -62,6 +66,7 @@ class MoviesController < ApplicationController
         format.json { render json: @movie.errors, status: :unprocessable_entity }
       end
     end
+    # authorize! :update, Movie
   end
 
   # DELETE /movies/1
@@ -72,12 +77,20 @@ class MoviesController < ApplicationController
       format.html { redirect_to movies_url, notice: 'Movie was successfully destroyed.' }
       format.json { head :no_content }
     end
+    # authorize! :destroy, Movie
   end
 
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_movie
       @movie = Movie.find(params[:id])
+    end
+
+    def check_admin
+      unless current_user.admin?
+        redirect_to root_path
+      end
+
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.

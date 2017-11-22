@@ -4,4 +4,12 @@ class User < ActiveRecord::Base
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :trackable, :validatable
   has_many :reviews
+
+  def admin?
+  	if role == "admin"
+  		true
+  	else
+  		false
+  	end
+  end
 end

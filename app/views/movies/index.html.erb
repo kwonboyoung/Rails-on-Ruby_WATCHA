@@ -19,8 +19,12 @@
         <td><%= image_tag "#{movie.image_url}",  height: '150', width: '200'  %></td>
         <td><%= movie.desc %></td>
         <td><%= link_to 'Show', movie %></td>
-        <td><%= link_to 'Edit', edit_movie_path(movie) %></td>
-        <td><%= link_to 'Destroy', movie, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+        <% if current_user%>
+          <% if current_user.admin? %> 
+          <td><%= link_to 'Edit', edit_movie_path(movie) %></td>
+          <td><%= link_to 'Destroy', movie, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+          <%end%>
+        <%end%>
         <!-- <td><%= link_to "보기",movie_path(movie.id) %></td> -->
       </tr>
     <%end%>
