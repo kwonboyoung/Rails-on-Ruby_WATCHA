@@ -371,4 +371,301 @@ Loading development environment (Rails 4.2.9)
     평균 평점 : <%= @movie.reviews.average(:rating)%>
     ```
 
+    ​  
+
+* model에 column추가
+
+  ```ruby
+  rails g migration add_role_to_users role
+
+  rake db:migrate
+
+  rails c
+
+  User.create email: "admin@asdf.com", password: "123123", password_confirmation: "123123", role: "admin"
+
+  User.create email: "regular@asdf.com", password: "123123", password_confirmation: "123123", role: "regular"
+
+  User.all
+  ```
+
+  ​
+
+
+* 권한 설정(Authorization)
+
+```ruby
+# user model 
+def admin?
+  if role == "admin"
+    true
+  else
+    false
+  end
+end
+```
+
+```ruby
+# movie controller
+before_action :check_admin, only: [:edit, :update, :destroy]
+
+# private 밑에
+def check_admin
+  unless current_user.admin?
+    redirect_to root_path
+  end
+end
+```
+
+위 방식을 아래와 같이 gem을 써서 구현할 수 있음
+
+* gem 'cancancan', '~> 2.0'
+
+  ```ruby
+  ubuntu@ubuntu-xenial:/vagrant/real_board$ rails g cancan:ability
+
+  # ability.rb
+  user ||= User.new # guest user (not logged in)
+  if user.admin?
+    can :manage, :all
+  else
+    can :read, :all
+  end
+  #위 부분 블럭아웃
+  ```
+
+  - 방법 1
+
+    ```ruby
+    # movie controller
+    authorize! :read, Movie 
+    # 이런 식으로 함수 맨 밑 부분마다 써줌 (:create, :update, :destroy)
+    ```
+
+  - 방법 2
+
+    ```ruby
+    # movie controller
+    load_and_authorize_resource # 이 한줄만 추가하면 방법 1처럼 구현
+    ```
+
     ​
+
+* heroku 배포
+
+  깔려 있는지 확인 방법
+
+  ```ruby
+  ubuntu@ubuntu-xenial:/vagrant/real_board$ heroku --version
+  heroku: command not found
+  ```
+
+  - heroku toolbelt 깔기
+
+    ```ruby
+    $ wget -qO- https://cli-assets.heroku.com/install-ubuntu.sh | sh
+    ubuntu@ubuntu-xenial:/vagrant/real_board$ heroku --version                      heroku-cli/6.14.38-9bfc11a (linux-x64) node-v9.2.0
+    ubuntu@ubuntu-xenial:/vagrant/real_board$ heroku login
+    Enter your Heroku credentials:
+    Email: twins618@naver.com
+    Password: ********
+    Logged in as twins618@naver.com
+    ubuntu@ubuntu-xenial:/vagrant/real_board$ sudo apt-get install libpq-dev
+    ```
+
+    ```ruby
+    gem 'sqlite3', group: :development
+
+    gem 'rails_12factor', group: :production
+    gem 'pg', group: :production
+    ```
+
+```ruby
+ubuntu@ubuntu-xenial:/vagrant/real_board$ bundle install
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git config --global color.ui true
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git config --global user.name "kwonboyoung"
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git config --global user.email "twins618@naver.com"
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git status
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git add .
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git commit -m "Heroku deploy ready"
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git status
+On branch master
+Your branch is ahead of 'origin/master' by 1 commit.
+  (use "git push" to publish your local commits)
+nothing to commit, working directory clean
+ubuntu@ubuntu-xenial:/vagrant/real_board$ heroku create
+Creating app... done, ⬢ frozen-cliffs-49100
+https://frozen-cliffs-49100.herokuapp.com/ | https://git.heroku.com/frozen-cliffs-49100.git
+ubuntu@ubuntu-xenial:/vagrant/real_board$ git push heroku master
+ubuntu@ubuntu-xenial:/vagrant/real_board$ heroku run rake db:migrate
+ => 이 뒷부분은 멀티캠퍼스 port 막아서 안됨.
+```
+
+```ruby
+# 그래서 c9으로 clone해서 가져옴.
+kby0618:~/workspace (master) $ bundle install
+
+```
+
+
+
+* admin 붙이기
+
+```ruby
+ubuntu@ubuntu-xenial:/vagrant/real_board$ rake routes
+# routes.rb
+namespace :admin do
+  resources :users
+end
+
+# controller에 admin 폴더를 만들어서 application_controller.rb
+class Admin::ApplicationController < ApplicationController
+
+end
+
+# controller에 만든 admin 폴더에 users_controller.rb
+class Admin::UsersController < Admin::ApplicationController
+  def index
+    @users = User.all
+  end
+    def destroy
+    @user = User.find(params[:id])
+    @user.destroy
+
+    redirect_to admin_user_path
+  end
+end
+
+# views에 admin 폴더를 만들고 안에 users 폴더를 만들어서 index.erb
+<h1>유저 관리 페이지</h1>
+<%= @users.each do |user| %>
+  <p><%= user.email%></p>
+  <p><%= user.role%></p>
+  <%= link_to "[삭제]", admin_user_path(user.id), method: :delete, data: { confirm: 'Are you sure?'}%>
+<%end%>
+  
+# admin이 붙은 route만 검색하기
+ubuntu@ubuntu-xenial:/vagrant/real_board$ rake routes | grep admin
+  
+# add_role_to_users migration file에 :default => "regular", :null => false 추가
+  class AddRoleToUsers < ActiveRecord::Migration
+    def change
+      add_column :users, :role, :string, :default => "regular", :null => false
+    end
+  end
+  
+# customed_url 만들기 routes.rb에서 put :upgrade put :downgrade 추가하면 route 경로 두개 더 생김, , on: :member 추가하면 route 경로에 :user_id를 원래처럼 :id로 쓸 수 있다.
+  namespace :admin do
+    resources :users do
+      put :upgrade, on: :member
+      put :downgrade, on: :member
+    end
+  end
+  
+# user_controller.rb
+  def upgrade
+    @user = User.find(params[:id])
+    @user.update(
+      role: "admin"
+      )
+
+    redirect_to :back
+  end
+
+  def downgrade
+    @user = User.find(params[:id])
+    @user.update(
+      role: "regular"
+      )
+
+    redirect_to admin_users_path
+  end
+  
+# index.erb
+<% if user.role =="regular"%>
+<%= link_to "[관리자 승급]", upgrade_admin_user_path(user), method: :put, 
+data: {confirm: '정말 승급시키시겠습니까?'}%>
+<% else %>
+<%= link_to "[관리자 강등]", downgrade_admin_user_path(user), method: :put, 
+data: {confirm: '정말 강등시키시겠습니까?'}%>
+<% end %>
+
+# 관리자 페이지 아무나 못들어가!!
+# admin의 application_controller.rb
+before_action :check_admin
+
+private
+def check_admin
+# if current_user.admin?
+#   redirect_to admin_users_path
+# else
+#   redirect_to :back
+
+  unless user_signed_in? && current_user.admin?
+   redirect to root_path, alert:"관리자 계정으로 로그인 하셔야해용"
+  end
+end
+```
+
+
+
+- gem 'faker' => db에 더미데이터 넣기
+
+  ```ruby
+  gem 'faker'
+
+  # seeds.rb
+  30.times do
+    User.create(
+      email: Faker::Internet.email,
+      password: "123123",
+      password_confirmation: "123123"
+    )
+  end
+
+  ubuntu@ubuntu-xenial:/vagrant/real_board$ rake db:drop
+  ubuntu@ubuntu-xenial:/vagrant/real_board$ rake db:migrate
+  ubuntu@ubuntu-xenial:/vagrant/real_board$ rake db:seed
+  ```
+
+  ​
+
+- bootstrap
+
+  ```ruby
+  # layouts/application.html 아래 추가
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+  ```
+
+  ​
+
+-  mdl
+
+  ```ruby
+  # layouts/application.html 아래 추가
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+  <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    
+  # body
+  <%= render "layouts/header" %>
+
+  # layouts/_header.erb
+    # 맘에 드는 템플릿 복붙
+
+  # footer도 마찬가지
+  ```
+
+  ​
+
+- view를 controller에 따라 다르게 만드는 법
+
+  ```ruby
+  # admin/application_controller
+  layout 'admin' # 이 줄만 추가하면 layouts/admin.html, layouts/admin_header.erb 등 가능
+  ```
+
+  ​
