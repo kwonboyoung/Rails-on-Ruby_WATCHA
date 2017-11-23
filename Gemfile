@@ -1,7 +1,12 @@
 source 'https://rubygems.org'
 
+gem 'aws-sdk-rails'
+gem 'fog-aws'
+gem 'mini_magick'
+gem 'trix'
+
 gem 'rails_12factor', group: :production
-gem 'pg', group: :production
+# gem 'pg', group: :production
 
 gem 'cancancan', '~> 2.0'
 gem 'faker'

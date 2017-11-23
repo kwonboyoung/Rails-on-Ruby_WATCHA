@@ -8,15 +8,21 @@
       <div class="mdl-layout-spacer"></div>
       <!-- Navigation. We hide it in small screens. -->
       <nav class="mdl-navigation mdl-layout--large-screen-only">
-        <a class="mdl-navigation__link" href="">
-          <%= current_user.email if current_user%>님 환영합니다
+
+        <% if user_signed_in? %>
+          <a class="mdl-navigation__link" href="">
+            <%= current_user.email if current_user %>님 환영합니다
+          </a>
+          <a class="mdl-navigation__link" href="">
+            <%= link_to '로그아웃', destroy_user_session_path, method: :delete, class: "mdl-navigation__link" %>
+          <% else %>
+            <%= link_to '로그인', new_user_session_path, class:"mdl-navigation__link"%>
+          </a>
+        <% end %>
+        <a class="mdl-navigation__link" href="/">홈으로
+          <!-- <%#= link_to '홈으로', root_path %> -->
         </a>
-        <a class="mdl-navigation__link" href="">
-        <%= link_to '로그인', new_user_session_path, class:"mdl-navigation__link"%>
-        </a>
-        <a class="mdl-navigation__link" href="">
-          <%= link_to '로그아웃', destroy_user_session_path, method: :delete, class:"mdl-navigation__link" %>
-        </a>
+        
       </nav>
     </div>
   </header>

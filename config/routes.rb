@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   
+  resources :posts
   get 'reviews/create'
 
   root 'movies#index'

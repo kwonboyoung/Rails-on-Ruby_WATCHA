@@ -16,7 +16,7 @@
     <% @movies.each do |movie| %>
       <tr>
         <td><%= movie.title %></td>
-        <td><%= image_tag "#{movie.image_url}",  height: '150', width: '200'  %></td>
+        <td><%= image_tag movie.image_url,  height: '150', width: '200'  %></td>
         <td><%= movie.desc %></td>
         <td><%= link_to 'Show', movie %></td>
         <% if current_user%>
